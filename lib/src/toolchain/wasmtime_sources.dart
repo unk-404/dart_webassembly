@@ -14,7 +14,9 @@
 //
 // This lives in `lib/` and not next to the hook, because a package may only
 // contain the hook entry points - `hook/build.dart` and `hook/link.dart` - and
-// imports this through its package URI.
+// imports this through its package URI.  Keep the directory out of a
+// `.gitignore`d name such as `build/`, or `pub publish` leaves it out of the
+// archive.
 
 import 'dart:io';
 

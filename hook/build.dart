@@ -14,7 +14,7 @@ import 'package:code_assets/code_assets.dart'; // input.config.buildCodeAssets
 import 'package:hooks/hooks.dart';
 import 'package:logging/logging.dart';
 import 'package:native_toolchain_cmake/native_toolchain_cmake.dart';
-import 'package:webassembly/src/build/wasmtime_sources.dart';
+import 'package:webassembly/src/toolchain/wasmtime_sources.dart';
 
 /// Name part of the code asset id `package:webassembly/wasmtime.dart`.
 const String _assetName = 'wasmtime.dart';

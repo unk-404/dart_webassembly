@@ -2,14 +2,22 @@
 #
 # `.gitignore` already keeps `.agent/` and `build/` out; they are repeated here
 # because this file is the authoritative list once it exists.
+#
+# The patterns are rooted (`/build/`): an unrooted `build/` also matches any
+# directory called `build` deeper in the package, which is how
+# `lib/src/build/` was once silently dropped from the archive.
 .agent/
-build/
-example/build/
-example/.dart_tool/
-.dart_tool/
-.vsocde/
+/build/
+/example/build/
+/.dart_tool/
+/example/.dart_tool/
+/example/windows/flutter/ephemeral/
+/example/linux/flutter/ephemeral/
+/example/macos/Flutter/ephemeral/
+/.vscode/
 *.log
 
 # The wasmtime sources are a 100 MB checkout that the build hook downloads at a
-# pinned revision into a user level cache; see hook/src/wasmtime_sources.dart.
-wasmtime/
+# pinned revision into a user level cache; see
+# lib/src/toolchain/wasmtime_sources.dart.
+/wasmtime/
