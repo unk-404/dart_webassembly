@@ -16,17 +16,22 @@ env:
 
 jobs:
   analyze:
-    name: Analyze and publish dry run
+    name: Analyze, archive and publish dry run
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: dart-lang/setup-dart@v1
+      # Flutter, not just the Dart SDK: pub resolves `example/` too, and that
+      # is a Flutter application, so `dart pub get` alone fails with
+      # "flutter_test from sdk which doesn't exist".
+      - uses: subosito/flutter-action@v2
         with:
-          sdk: stable
+          channel: stable
+          cache: true
 
-      - run: dart pub get
+      - name: Resolve dependencies
+        run: flutter pub get
 
       - name: Analyze
         run: |
@@ -34,17 +39,51 @@ jobs:
           # The package root run does not look at hook/.
           dart analyze hook
 
-      # This is what would have caught the hook directory and .pubignore
-      # mistakes: it packs the package exactly as `dart pub publish` would.
-      - name: Publish dry run
-        run: dart pub publish --dry-run
+      # Packs the package exactly as `dart pub publish` would, and fails if a
+      # part of the library would be left out - which is how `lib/src/wasmtime/`
+      # once shipped missing, from an unrooted `wasmtime/` in .pubignore.
+      - name: Publish dry run and archive check
+        run: |
+          set -euo pipefail
+          dart pub publish --dry-run | tee /tmp/dry-run.txt
+
+          status=0
+          for name in \
+            lib/webassembly.dart lib/wasmtime.dart lib/parallel.dart lib/raw.dart \
+            src/api/webassembly.dart src/api/backend_io.dart src/api/backend_web.dart \
+            src/ffi/handles.dart src/ffi/errors.dart src/ffi/values.dart \
+            src/parallel/worker.dart src/parallel/pool.dart \
+            src/wasmtime/engine.dart src/wasmtime/store.dart src/wasmtime/module.dart \
+            src/wasmtime/linker.dart src/wasmtime/handles.dart src/wasmtime/types.dart \
+            src/toolchain/wasmtime_sources.dart src/wasmtime_bindings_generated.dart \
+            hook/build.dart src/CMakeLists.txt ffigen.yaml LICENSE CHANGELOG.md; do
+            # The dry run prints a tree, so only the last path segment can be
+            # matched; that is enough to catch a whole directory going missing.
+            if ! grep -qF "${name##*/}" /tmp/dry-run.txt; then
+              echo "::error file=$name::$name is missing from the published archive"
+              status=1
+            fi
+          done
+          exit "$status"
+
+      # What pana does before scoring a release.  `dart analyze` does not look
+      # at build hooks - they are compiled rather than analysed - so the hook
+      # check in .github/check_hooks.py runs as well; that is what caught
+      # platform 3.0.0, whose `Platform.packageRoot` current SDKs removed.
+      - name: The lowest allowed dependencies still work
+        run: |
+          set -euo pipefail
+          dart pub downgrade --no-example
+          dart analyze
+          python3 .github/check_hooks.py
+          dart pub upgrade
 
   test:
     name: Native tests (wasmtime)
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
 
@@ -55,11 +94,12 @@ jobs:
           # wasmtime's cargo target directory, which is the expensive part.
           workspaces: wasmtime
 
-      - uses: dart-lang/setup-dart@v1
+      - uses: subosito/flutter-action@v2
         with:
-          sdk: stable
+          channel: stable
+          cache: true
 
-      - run: dart pub get
+      - run: flutter pub get
 
       # `dart test` runs the build hook, which compiles wasmtime from source,
       # and then the tests: the wasmtime API, the unified API, the isolate
@@ -80,13 +120,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: dart-lang/setup-dart@v1
+      - uses: subosito/flutter-action@v2
         with:
-          sdk: stable
+          channel: stable
+          cache: true
 
-      - run: dart pub get
+      - run: flutter pub get
 
       # The same platform neutral test file as `dart test` runs above, only
       # against the browser's own WebAssembly.  The build hook skips its native
@@ -99,7 +140,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - uses: subosito/flutter-action@v2
         with:
@@ -124,7 +165,7 @@ jobs:
     # check it on every pull request too.
     if: github.event_name != 'pull_request'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: recursive
 

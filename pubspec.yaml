@@ -1,6 +1,6 @@
 name: webassembly
 description: "WebAssembly for Dart and Flutter: one API that runs on wasmtime on native platforms and on the browser's own WebAssembly on the web."
-version: 0.1.0
+version: 0.1.1
 
 repository: https://github.com/unk-404/dart_webassembly
 issue_tracker: https://github.com/unk-404/dart_webassembly/issues
@@ -26,3 +26,9 @@ dev_dependencies:
   ffigen: ^23.0.0
   flutter_lints: ^6.0.0
   test: ^1.28.0
+  # Not used directly.  `dart pub downgrade`, the resolution check pana runs
+  # before scoring a release, would otherwise pick platform 3.0.0, whose
+  # `Platform.packageRoot` was removed from the SDK - and then the build hooks of
+  # our dependencies (ffigen's) no longer compile.
+  platform: ^3.2.0
+

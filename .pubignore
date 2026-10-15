@@ -21,3 +21,4 @@
 # pinned revision into a user level cache; see
 # lib/src/toolchain/wasmtime_sources.dart.
 /wasmtime/
+*.dill
