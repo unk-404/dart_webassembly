@@ -16,9 +16,15 @@
 /example/macos/Flutter/ephemeral/
 /.vscode/
 *.log
+*.dill
 
 # The wasmtime sources are a 100 MB checkout that the build hook downloads at a
 # pinned revision into a user level cache; see
 # lib/src/toolchain/wasmtime_sources.dart.
-/wasmtime/
-*.dill
+#
+# `*` rather than `/wasmtime/`, because the submodule itself is a checked-in
+# path: ignoring it directly makes pub warn that a tracked file is being left
+# out (harmless, but it makes `dart pub publish --dry-run` exit 65).  Ignoring
+# the entries inside it keeps the whole checkout out all the same, because
+# ignoring a directory ignores everything below it.
+/wasmtime/*

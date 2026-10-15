@@ -42,12 +42,21 @@ jobs:
       # Packs the package exactly as `dart pub publish` would, and fails if a
       # part of the library would be left out - which is how `lib/src/wasmtime/`
       # once shipped missing, from an unrooted `wasmtime/` in .pubignore.
+      #
+      # `--dry-run` exits 65 whenever the package has *warnings* as well, so its
+      # status is ignored here and a real validation error is looked for instead.
       - name: Publish dry run and archive check
         run: |
-          set -euo pipefail
-          dart pub publish --dry-run | tee /tmp/dry-run.txt
+          set -uo pipefail
+          dart pub publish --dry-run > /tmp/dry-run.txt 2>&1 || true
+          sed -n '/Validating package/,$p' /tmp/dry-run.txt
 
           status=0
+          if grep -q 'Package validation found the following error' /tmp/dry-run.txt; then
+            echo '::error::the package has a validation error; see the log above'
+            status=1
+          fi
+
           for name in \
             lib/webassembly.dart lib/wasmtime.dart lib/parallel.dart lib/raw.dart \
             src/api/webassembly.dart src/api/backend_io.dart src/api/backend_web.dart \
@@ -64,6 +73,10 @@ jobs:
               status=1
             fi
           done
+          if [ "$status" -ne 0 ]; then
+            echo '--- full dry run output'
+            cat /tmp/dry-run.txt
+          fi
           exit "$status"
 
       # What pana does before scoring a release.  `dart analyze` does not look
