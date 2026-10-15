@@ -189,7 +189,7 @@ in mind when you ship.
 | `lib/src/parallel/` | `WasmWorker` and `WasmPool` |
 | `lib/src/wasmtime_bindings_generated.dart` | the generated C bindings (do not edit) |
 | `hook/build.dart` | the build hook Flutter and Dart run |
-| `hook/src/wasmtime_sources.dart` | where the wasmtime sources come from |
+| `lib/src/build/wasmtime_sources.dart` | where the wasmtime sources come from (in `lib/`, because a package may only contain the hook entry points) |
 | `src/CMakeLists.txt` | selects the cargo features and builds the C API as a shared library |
 | `ffigen.yaml` | ffigen configuration |
 | `example/` | a Flutter app that builds for Windows and for the web |

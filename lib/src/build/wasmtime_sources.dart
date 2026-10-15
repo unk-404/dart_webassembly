@@ -4,12 +4,17 @@
 // https://github.com/bytecodealliance/wasmtime is about 100 MB, so instead of
 // shipping (and re-publishing) it, it is looked up in this order:
 //
-//   1. the `WASMTIME_SOURCE_DIR` environment variable,
-//   2. the `wasmtime/` git submodule, which is how this package is developed,
-//   3. a user level cache, filled by a shallow fetch of one revision.
+//   1. the `hooks.user_defines` entry described by [sourceDirDefine],
+//   2. the `WASMTIME_SOURCE_DIR` environment variable,
+//   3. the `wasmtime/` git submodule, which is how this package is developed,
+//   4. a user level cache, filled by a shallow fetch of one revision.
 //
 // The revision is the one the submodule of the source repository points at, so
 // a development checkout and a published package build the same code.
+//
+// This lives in `lib/` and not next to the hook, because a package may only
+// contain the hook entry points - `hook/build.dart` and `hook/link.dart` - and
+// imports this through its package URI.
 
 import 'dart:io';
 
@@ -39,15 +44,20 @@ const String wasmtimeSourceDirVariable = 'WASMTIME_SOURCE_DIR';
 const String sourceDirDefine = 'wasmtime_source_dir';
 
 /// Whether [directory] holds a wasmtime checkout with the C API in it.
-bool isWasmtimeCheckout(Directory directory) => File(
-  '${directory.path}/crates/c-api/CMakeLists.txt',
-).existsSync();
+bool isWasmtimeCheckout(Directory directory) =>
+    File(_join(directory.path, 'crates/c-api/CMakeLists.txt')).existsSync();
 
 /// Where a downloaded checkout is cached, given the revision.
 Directory wasmtimeCacheDirectory({Directory? cacheRoot}) => Directory(
-  '${(cacheRoot ?? defaultCacheRoot()).path}/dart_webassembly/wasmtime/'
-  '$wasmtimeRevision',
+  _join(
+    _join((cacheRoot ?? defaultCacheRoot()).path, 'dart_webassembly/wasmtime'),
+    wasmtimeRevision,
+  ),
 );
+
+/// Joins a path with a child, however the parent happens to end.
+String _join(String parent, String child) =>
+    '${parent.replaceAll(RegExp(r'[\\/]+$'), '')}/$child';
 
 /// The per-user cache directory of this platform.
 Directory defaultCacheRoot() {
@@ -108,7 +118,7 @@ Future<Directory> resolveWasmtimeSources({
       return directory;
     }
 
-    final submodule = Directory('${packageRoot.path}/wasmtime');
+    final submodule = Directory(_join(packageRoot.path, 'wasmtime'));
     if (isWasmtimeCheckout(submodule)) {
       report('wasmtime submodule = ${submodule.path}');
       return submodule;
