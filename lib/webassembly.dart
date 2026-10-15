@@ -11,7 +11,7 @@
 /// Because the API is the same, the same Dart code runs in both places:
 ///
 /// ```dart
-/// import 'package:flutter_wasm/flutter_wasm.dart';
+/// import 'package:webassembly/webassembly.dart';
 ///
 /// final module = await WebAssembly.compile(wasmBytes);
 /// final instance = await WebAssembly.instantiate(module, {
@@ -23,12 +23,12 @@
 /// wasmtime itself is only reachable through a separate import, because it only
 /// exists on native platforms:
 ///
-/// * `package:flutter_wasm/wasmtime.dart` - engines, stores, linkers,
+/// * `package:webassembly/wasmtime.dart` - engines, stores, linkers,
 ///   configuration, fuel, host function trampolines, module serialisation and
 ///   the type model, all wrapped for Dart.
-/// * `package:flutter_wasm/parallel.dart` - keep WebAssembly off the calling
+/// * `package:webassembly/parallel.dart` - keep WebAssembly off the calling
 ///   isolate and spread it over several threads (isolates; native only).
-/// * `package:flutter_wasm/raw.dart` - the generated C bindings, unguarded.
+/// * `package:webassembly/raw.dart` - the generated C bindings, unguarded.
 library;
 
 export 'src/api/types.dart'

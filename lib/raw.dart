@@ -7,9 +7,9 @@
 ///
 /// Prefer:
 ///
-/// * `package:flutter_wasm/flutter_wasm.dart` - the JavaScript shaped
+/// * `package:webassembly/webassembly.dart` - the JavaScript shaped
 ///   `WebAssembly` API and the non-blocking worker API.
-/// * `package:flutter_wasm/wasmtime.dart` - the wasmtime engine/store/linker
+/// * `package:webassembly/wasmtime.dart` - the wasmtime engine/store/linker
 ///   API, which owns its native objects.
 library;
 

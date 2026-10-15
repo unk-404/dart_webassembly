@@ -1,4 +1,4 @@
-// Flutter/Dart build hook for `package:flutter_wasm`.
+// Flutter/Dart build hook for `package:webassembly`.
 //
 // The SDK runs this on every build. It compiles the wasmtime C API (a Rust
 // `cdylib` inside the `wasmtime/` git submodule) through `src/CMakeLists.txt`
@@ -15,13 +15,15 @@ import 'package:hooks/hooks.dart';
 import 'package:logging/logging.dart';
 import 'package:native_toolchain_cmake/native_toolchain_cmake.dart';
 
-/// Name part of the code asset id `package:flutter_wasm/wasmtime.dart`.
+import 'src/wasmtime_sources.dart';
+
+/// Name part of the code asset id `package:webassembly/wasmtime.dart`.
 const String _assetName = 'wasmtime.dart';
 
 void main(List<String> args) async {
   await build(args, (input, output) async {
-    final logger = Logger('flutter_wasm')
-      ..onRecord.listen((record) => stdout.writeln('[flutter_wasm] ${record.message}'));
+    final logger = Logger('webassembly')
+      ..onRecord.listen((record) => stdout.writeln('[webassembly] ${record.message}'));
 
     // A build that does not produce native code - a web build, where the
     // browser brings its own WebAssembly - has no `code` configuration at all,
@@ -33,11 +35,21 @@ void main(List<String> args) async {
 
     final installDir = input.outputDirectory.resolve('install/');
 
+    // The wasmtime sources are not part of this package; find an explicit
+    // checkout (hooks.user_defines.wasmtime_source_dir or $WASMTIME_SOURCE_DIR),
+    // the submodule, or download the pinned revision into the cache.
+    final sources = await resolveWasmtimeSources(
+      packageRoot: Directory.fromUri(input.packageRoot),
+      configuredSourceDir: input.userDefines[sourceDirDefine],
+      log: logger.info,
+    );
+
     final builder = CMakeBuilder.create(
       name: 'wasmtime',
       sourceDir: input.packageRoot.resolve('src/'),
       defines: <String, String?>{
         'CMAKE_INSTALL_PREFIX': installDir.toFilePath(),
+        'WASMTIME_SOURCE_DIR': sources.path,
       },
       targets: const <String>['install'],
       logger: logger,

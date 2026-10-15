@@ -1,6 +1,16 @@
-name: flutter_wasm
-description: "Dart/Flutter bindings for the wasmtime C API, compiled from source at build time."
-version: 0.0.1
+name: webassembly
+description: "WebAssembly for Dart and Flutter: one API that runs on wasmtime on native platforms and on the browser's own WebAssembly on the web."
+version: 0.1.0
+
+repository: https://github.com/unk-404/dart_webassembly
+issue_tracker: https://github.com/unk-404/dart_webassembly/issues
+
+topics:
+  - webassembly
+  - wasm
+  - wasmtime
+  - ffi
+  - native-assets
 
 environment:
   sdk: ^3.13.5

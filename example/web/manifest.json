@@ -1,11 +1,11 @@
 {
-    "name": "flutter_wasm_example",
-    "short_name": "flutter_wasm_example",
+    "name": "webassembly_example",
+    "short_name": "webassembly_example",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Demonstrates how to use the flutter_wasm package.",
+    "description": "Demonstrates how to use the webassembly package.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

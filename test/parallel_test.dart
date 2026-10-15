@@ -4,7 +4,7 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter_wasm/parallel.dart';
+import 'package:webassembly/parallel.dart';
 import 'package:test/test.dart';
 
 Uint8List fixture(String name) =>

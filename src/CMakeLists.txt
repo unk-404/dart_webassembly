@@ -1,5 +1,5 @@
 # ============================================================================
-#  Builds the wasmtime C API as a shared library for `package:flutter_wasm`.
+#  Builds the wasmtime C API as a shared library for `package:webassembly`.
 #
 #  Everything platform specific already lives in wasmtime's own CMake project
 #  (`wasmtime/crates/c-api/CMakeLists.txt`): locating cargo, resolving the Rust
@@ -12,7 +12,7 @@
 #  Flutter/Dart build.
 # ============================================================================
 cmake_minimum_required(VERSION 3.20)
-project(flutter_wasm_wasmtime LANGUAGES C)
+project(webassembly_wasmtime LANGUAGES C)
 
 # ---------------------------------------------------------------------------
 # Rust toolchain environment
@@ -30,23 +30,23 @@ project(flutter_wasm_wasmtime LANGUAGES C)
 # when they are already in the environment or when cargo is not a rustup shim
 # (in which case nothing has to be forwarded).
 # ---------------------------------------------------------------------------
-find_program(FLUTTER_WASM_CARGO
+find_program(WEBASSEMBLY_CARGO
   NAMES cargo cargo.exe
   HINTS "$ENV{CARGO_HOME}/bin" "$ENV{USERPROFILE}/.cargo/bin" "$ENV{HOME}/.cargo/bin"
   DOC "cargo executable used to build the wasmtime crates")
-if(NOT FLUTTER_WASM_CARGO)
+if(NOT WEBASSEMBLY_CARGO)
   message(FATAL_ERROR
     "cargo was not found on PATH. Install Rust (https://rustup.rs) or pass "
-    "-DFLUTTER_WASM_CARGO=/path/to/cargo.")
+    "-DWEBASSEMBLY_CARGO=/path/to/cargo.")
 endif()
-get_filename_component(_cargo_bin_dir "${FLUTTER_WASM_CARGO}" DIRECTORY)
+get_filename_component(_cargo_bin_dir "${WEBASSEMBLY_CARGO}" DIRECTORY)
 get_filename_component(_cargo_home "${_cargo_bin_dir}" DIRECTORY)
 
 # <CARGO_HOME>/bin/cargo is the shim, and a used cargo home has a registry.
-set(FLUTTER_WASM_CARGO_HOME "$ENV{CARGO_HOME}")
-if(FLUTTER_WASM_CARGO_HOME STREQUAL "" AND
+set(WEBASSEMBLY_CARGO_HOME "$ENV{CARGO_HOME}")
+if(WEBASSEMBLY_CARGO_HOME STREQUAL "" AND
    (IS_DIRECTORY "${_cargo_home}/registry" OR EXISTS "${_cargo_home}/config.toml"))
-  set(FLUTTER_WASM_CARGO_HOME "${_cargo_home}")
+  set(WEBASSEMBLY_CARGO_HOME "${_cargo_home}")
 endif()
 
 # rustup keeps its data beside CARGO_HOME, or in the user profile by default.
@@ -54,8 +54,8 @@ endif()
 # that toolchain actually installed is accepted: rustup also creates empty
 # skeleton homes, and a `$HOME/.rustup` can hold toolchains that no profile
 # selects (`rustc` then reports "no default is configured").
-set(FLUTTER_WASM_RUSTUP_HOME "$ENV{RUSTUP_HOME}")
-if(FLUTTER_WASM_RUSTUP_HOME STREQUAL "")
+set(WEBASSEMBLY_RUSTUP_HOME "$ENV{RUSTUP_HOME}")
+if(WEBASSEMBLY_RUSTUP_HOME STREQUAL "")
   file(GLOB _rustup_candidates
        LIST_DIRECTORIES true
        "${_cargo_home}" "${_cargo_home}/.." "${_cargo_home}/../*"
@@ -63,31 +63,31 @@ if(FLUTTER_WASM_RUSTUP_HOME STREQUAL "")
   foreach(_candidate IN LISTS _rustup_candidates)
     file(GLOB _installed_toolchains LIST_DIRECTORIES true "${_candidate}/toolchains/*")
     if(EXISTS "${_candidate}/settings.toml" AND _installed_toolchains)
-      set(FLUTTER_WASM_RUSTUP_HOME "${_candidate}")
+      set(WEBASSEMBLY_RUSTUP_HOME "${_candidate}")
       break()
     endif()
   endforeach()
 endif()
 
 foreach(_var CARGO_HOME RUSTUP_HOME)
-  if(FLUTTER_WASM_${_var})
-    message(STATUS "flutter_wasm: ${_var} = ${FLUTTER_WASM_${_var}}")
-    list(APPEND WASMTIME_BUILD_ENV "${_var}=${FLUTTER_WASM_${_var}}")
+  if(WEBASSEMBLY_${_var})
+    message(STATUS "webassembly: ${_var} = ${WEBASSEMBLY_${_var}}")
+    list(APPEND WASMTIME_BUILD_ENV "${_var}=${WEBASSEMBLY_${_var}}")
   endif()
 endforeach()
 
 # Upstream probes `rustc -vV` for the host triple, which needs the same
 # environment.  Provide WASMTIME_TARGET up front so that probe is skipped; if
 # this fails (no rustup involved) upstream's own probe runs instead.
-if(NOT WASMTIME_TARGET AND FLUTTER_WASM_RUSTUP_HOME)
+if(NOT WASMTIME_TARGET AND WEBASSEMBLY_RUSTUP_HOME)
   execute_process(
-    COMMAND "${CMAKE_COMMAND}" -E env "RUSTUP_HOME=${FLUTTER_WASM_RUSTUP_HOME}" rustc -vV
+    COMMAND "${CMAKE_COMMAND}" -E env "RUSTUP_HOME=${WEBASSEMBLY_RUSTUP_HOME}" rustc -vV
     OUTPUT_VARIABLE _rustc_version
     ERROR_QUIET
     RESULT_VARIABLE _rustc_status)
   if(_rustc_status EQUAL 0 AND _rustc_version MATCHES "host: ([A-Za-z0-9_.-]+)")
     set(WASMTIME_TARGET "${CMAKE_MATCH_1}" CACHE STRING "" FORCE)
-    message(STATUS "flutter_wasm: rust target = ${WASMTIME_TARGET}")
+    message(STATUS "webassembly: rust target = ${WASMTIME_TARGET}")
   endif()
 endif()
 
@@ -117,7 +117,28 @@ endforeach()
 # to cargo.
 set(WASMTIME_USER_CARGO_BUILD_OPTIONS "--features=gc-copying" CACHE STRING "" FORCE)
 
-add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/../wasmtime/crates/c-api"
+# ---------------------------------------------------------------------------
+# Where the wasmtime sources are
+#
+# They are not part of this package: the build hook resolves a checkout - the
+# submodule of the source repository while developing, a pinned download from
+# the user level cache otherwise - and passes it in.  A hand-run configure falls
+# back to the submodule next to this file.
+# ---------------------------------------------------------------------------
+set(WASMTIME_URL "https://github.com/bytecodealliance/wasmtime"
+    CACHE STRING "where the sources come from")
+set(WASMTIME_REVISION "5af334209f6a230c167f836bcbfdef5fa8cbad01"
+    CACHE STRING "the revision built here")
+set(WASMTIME_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../wasmtime"
+    CACHE PATH "checkout of ${WASMTIME_URL} at ${WASMTIME_REVISION}")
+if(NOT EXISTS "${WASMTIME_SOURCE_DIR}/crates/c-api/CMakeLists.txt")
+  message(FATAL_ERROR
+    "WASMTIME_SOURCE_DIR (${WASMTIME_SOURCE_DIR}) does not contain the wasmtime "
+    "C API. Use the wasmtime submodule, or clone ${WASMTIME_URL} at "
+    "${WASMTIME_REVISION} and pass -DWASMTIME_SOURCE_DIR=<checkout>.")
+endif()
+
+add_subdirectory("${WASMTIME_SOURCE_DIR}/crates/c-api"
                  "${CMAKE_CURRENT_BINARY_DIR}/wasmtime-c-api")
 
 # ---------------------------------------------------------------------------

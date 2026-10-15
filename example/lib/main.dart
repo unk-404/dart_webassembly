@@ -1,13 +1,13 @@
 // The same Dart code, WebAssembly on every platform.
 //
-// `package:flutter_wasm/flutter_wasm.dart` picks the implementation for you:
+// `package:webassembly/webassembly.dart` picks the implementation for you:
 // the browser's own WebAssembly on the web, wasmtime everywhere else.  Nothing
 // in this file knows which one it is running on, which is exactly the point.
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
-import 'package:flutter_wasm/flutter_wasm.dart';
+import 'package:webassembly/webassembly.dart';
 
 void main() {
   runApp(const MyApp());
@@ -83,7 +83,7 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('flutter_wasm')),
+      appBar: AppBar(title: const Text('webassembly')),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(

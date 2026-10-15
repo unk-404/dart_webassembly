@@ -1,27 +1,19 @@
-# flutter_wasm
+# webassembly
 
-WebAssembly for Flutter and Dart, on one API for every platform.
+WebAssembly for Dart and Flutter, on one API for every platform.
 
 * on **native platforms** - Android, iOS, Linux, macOS, Windows - it runs on
-  [wasmtime](https://wasmtime.dev), built from source as part of your build;
+  [wasmtime](https://wasmtime.dev), which this package compiles from source as
+  part of your build;
 * on the **web** it runs on the browser's own `WebAssembly`.
 
-Which one you get is decided at compile time; the code you write is the same.
-
-The native library is **built from source as part of your build**.
-`hook/build.dart` drives `src/CMakeLists.txt` through
-[package:native_toolchain_cmake], which asks cargo to build the
-`wasmtime-c-api` cdylib out of the `wasmtime/` git submodule. The resulting
-shared library (`wasmtime.dll` / `libwasmtime.so` / `libwasmtime.dylib`) is
-registered as a native code asset, so the Flutter/Dart SDK bundles it next to
-your application, and the bindings in `lib/src/wasmtime_bindings_generated.dart`
-resolve their symbols from it (`ffi-native.asset-id` in `ffigen.yaml`). A build
-that produces no native code, such as a web build, is skipped.
+Which engine you get is decided at compile time by a conditional import, so the
+code you write is the same either way.
 
 ## The unified API
 
 ```dart
-import 'package:flutter_wasm/flutter_wasm.dart';
+import 'package:webassembly/webassembly.dart';
 
 final module = await WebAssembly.compile(wasmBytes);
 final instance = await WebAssembly.instantiate(module, {
@@ -34,69 +26,93 @@ print(instance.exports['mem']! as Memory);
 
 `WebAssembly`, `Module`, `Instance`, `Memory`, `Table`, `Global`,
 `CompileError`, `LinkError` and `RuntimeError` follow the JavaScript API of the
-same names, so this layer ports to the web unchanged; `test/unified_api_test.dart`
-is run against both backends to keep it that way.
+same names. `test/unified_api_test.dart` is one platform neutral file - it
+embeds its `.wasm` fixtures instead of reading files - and is run against both
+engines:
 
 ```sh
 dart test test/unified_api_test.dart             # wasmtime
-dart test -p chrome test/unified_api_test.dart   # the browser
+dart test -p chrome test/unified_api_test.dart   # a real browser
 ```
 
 ### Entry points
 
 | Import | Contents |
 | --- | --- |
-| `package:flutter_wasm/flutter_wasm.dart` | the unified API; the only import a portable application needs |
-| `package:flutter_wasm/wasmtime.dart` | the wasmtime API: engines, stores, linkers, configuration, fuel, host trampolines, module serialisation, the type model |
-| `package:flutter_wasm/parallel.dart` | `WasmWorker` and `WasmPool`: keep WebAssembly off the calling isolate, and spread it over several threads |
-| `package:flutter_wasm/raw.dart` | the generated C bindings, unguarded |
+| `package:webassembly/webassembly.dart` | the unified API; the only import a portable application needs |
+| `package:webassembly/wasmtime.dart` | the wasmtime API: engines, stores, linkers, the type model, host function trampolines, configuration, fuel, module serialisation |
+| `package:webassembly/parallel.dart` | `WasmWorker` and `WasmPool`: run WebAssembly off the calling isolate, or on several threads |
+| `package:webassembly/raw.dart` | the generated C bindings, unguarded |
 
-Everything except `flutter_wasm.dart` is native only, and needs its own import -
+Everything except `webassembly.dart` is native only and needs its own import -
 by design, since wasmtime, isolates and the C ABI do not exist on the web.
 
 ### What differs on the web
-
-The two backends are the same API, but they are still two different engines, and
-Dart sits between them:
 
 | | native | web |
 | --- | --- | --- |
 | `i64` values | `int` | `BigInt` (JavaScript has no 64 bit integers) |
 | module serialisation | `Module.serialize` in `wasmtime.dart` | not available |
 | engines, configuration, fuel | `wasmtime.dart` | not available |
-| `WasmWorker`, `WasmPool` | isolates | not available - use the platform's own workers |
+| `WasmWorker`, `WasmPool` | isolates | not available |
 | errors | `CompileError` / `LinkError` / `RuntimeError` | the same, mapped from the browser's |
+
+The web backend maps the browser's linking failures onto `LinkError`, which is
+what the specification and wasmtime report, so both engines hand you the same
+error types.
 
 ## Requirements
 
-* **Rust** - `cargo` has to be on `PATH`; wasmtime is a Rust library and only
-  cargo can compile it.
+* a **Dart/Flutter SDK with build hooks and code assets** - verified with Dart
+  3.13.5 and Flutter 3.47.7;
+* **Rust** - `cargo` has to be on `PATH`; wasmtime is a Rust library, and only
+  cargo can compile it;
 * **CMake and a C toolchain** - on Windows, Visual Studio with *Desktop
   development with C++* (the hook applies `vcvars` itself). CMake must also be
   reachable from `PATH` while cargo runs, because wasmtime's own C API build
-  script shells out to it; `vcvars` provides it.
-* The submodule: `git submodule update --init --recursive`.
+  script shells out to it; `vcvars` provides it;
+* **git** - the first native build downloads the pinned wasmtime revision.
 
-## Features
+The first native build downloads about 100 MB of sources and compiles wasmtime,
+which takes a while; every build after that is incremental. A web build does no
+native work at all.
 
-The library is built with exactly this cargo feature set, selected in
-`src/CMakeLists.txt`:
+## Where wasmtime comes from
 
-```
-cranelift, threads, async, component-model, component-model-async, cache,
-parallel-compilation, pooling-allocator, gc, gc-drc, gc-null, gc-copying,
-demangle, addr2line, coredump
-```
+The wasmtime sources are **not** part of the published package. The build hook
+resolves them in this order:
 
-Upstream's `cmake/features.cmake` enables a much larger default set, so the
-project starts from `WASMTIME_DISABLE_ALL_FEATURES=ON` and switches on just the
-features above. `gc-copying` has no `WASMTIME_FEATURE_*` switch upstream yet, so
-it is handed straight to cargo.
+1. `hooks.user_defines` from your `pubspec.yaml`:
+
+   ```yaml
+   hooks:
+     user_defines:
+       webassembly:
+         wasmtime_source_dir: /path/to/a/wasmtime/checkout
+   ```
+
+2. `$WASMTIME_SOURCE_DIR`. Build hooks run in a semi-hermetic environment that
+   strips almost every environment variable, so this one only applies when the
+   hook is invoked directly; inside a Flutter or Dart build use the user define
+   above.
+3. the `wasmtime/` git submodule, which is how this package is developed;
+4. otherwise a shallow download of one pinned revision into the per-user cache
+   (`%LOCALAPPDATA%\dart_webassembly` on Windows, `~/Library/Caches/...` on
+   macOS, `$XDG_CACHE_HOME` elsewhere), where later builds find it again.
+
+Notes:
+
+* A checkout is whatever `git clone` of
+  `https://github.com/bytecodealliance/wasmtime` at the revision in
+  `hook/src/wasmtime_sources.dart` gives you.
+* Leave `CARGO_TARGET_DIR` unset. Upstream's CMake lets cargo choose its own
+  target directory but derives the path it installs from from
+  `$CARGO_TARGET_DIR`, which do not always agree.
 
 ## Using wasmtime directly
 
 ```dart
-import 'package:flutter_wasm/wasmtime.dart';
+import 'package:webassembly/wasmtime.dart';
 
 final engine = WasmEngine.configured((config) {
   config.strategy = WasmStrategy.cranelift;
@@ -106,19 +122,18 @@ final module = WasmModule.compile(engine, wasmBytes);
 final store = WasmStore(engine);
 final instance = WasmLinker(engine).instantiate(store, module);
 
-final add = instance.export('add')! as WasmFunc;
-print(add.call([20, 22]));
+print((instance.export('add')! as WasmFunc).call([20, 22]));
 ```
 
 ## Running off the calling isolate
 
 ```dart
-import 'package:flutter_wasm/parallel.dart';
+import 'package:webassembly/parallel.dart';
 
 final worker = await WasmWorker.spawn();          // its own engine and store
 final module = await worker.compile(wasmBytes);
 final instance = await module.instantiate();
-print(await instance.invoke('add', [20, 22]));     // never blocks the caller
+print(await instance.invoke('add', [20, 22]));    // never blocks the caller
 await worker.dispose();
 
 // ... or spread the work over every processor:
@@ -130,48 +145,52 @@ await pool.dispose();
 
 ## Regenerating the bindings
 
-ffigen parses the headers of the submodule, which need the generated
-`wasmtime/conf.h` - the file that tells them which features exist. Configuring
-the project writes it to `build/ffigen/include/`:
+ffigen parses the headers of the wasmtime checkout, which need the generated
+`wasmtime/conf.h` - the file that says which features exist. Configuring the
+project writes it to `build/ffigen/include/`:
 
 ```sh
 cmake -S src -B build/ffigen-conf
 dart run ffigen --config ffigen.yaml
 ```
 
-## Tests
+## Development
 
 ```sh
-dart test                                          # wasmtime, workers and pools
-dart test -p chrome test/unified_api_test.dart      # the same API in a browser
-cd example && flutter build windows                 # bundles wasmtime.dll
-cd example && flutter build web                     # uses the browser instead
+dart test                                      # wasmtime, workers and pools
+dart test -p chrome test/unified_api_test.dart  # the same API in a browser
+cd example && flutter build windows             # bundles wasmtime.dll
+cd example && flutter build web                 # uses the browser instead
 ```
 
-`test/unified_api_test.dart` embeds its `.wasm` fixtures, so it runs on both.
+Cargo writes to the checkout's own `target/` directory (for the submodule,
+`wasmtime/target/`, which the submodule ignores).
 
-## Build cache
+## License
 
-Cargo writes to `wasmtime/target/`, wasmtime's own default location (git-ignored
-by the submodule). The first build compiles all of wasmtime and takes a while;
-later builds are incremental. Set `CARGO_TARGET_DIR` to relocate it.
+Apache-2.0; see [LICENSE](LICENSE).
+
+wasmtime itself is licensed under Apache-2.0 **with LLVM exceptions**. It is
+downloaded and compiled at build time, and the resulting shared library is
+redistributed inside your application, so keep
+[wasmtime's license](https://github.com/bytecodealliance/wasmtime/blob/main/LICENSE)
+in mind when you ship.
 
 ## Layout
 
 | Path | Purpose |
 | --- | --- |
-| `src/CMakeLists.txt` | selects the features and builds the C API as a shared library |
-| `hook/build.dart` | the build hook that Flutter/Dart runs |
-| `ffigen.yaml` | ffigen configuration |
-| `lib/flutter_wasm.dart` | the unified API: the browser shaped `WebAssembly` |
+| `lib/webassembly.dart` | the unified API: the browser shaped `WebAssembly` |
 | `lib/src/api/webassembly.dart` | that API, free of any backend |
 | `lib/src/api/backend_io.dart` | its wasmtime backend |
 | `lib/src/api/backend_web.dart` | its browser backend (`dart:js_interop`) |
 | `lib/src/ffi/` | ownership, marshalling, errors and values over the raw bindings |
 | `lib/src/wasmtime/` | the wasmtime engine, store, linker, module and handle API |
 | `lib/src/parallel/` | `WasmWorker` and `WasmPool` |
-| `lib/src/wasmtime_bindings_generated.dart` | generated bindings (do not edit) |
-| `example/` | Flutter app that builds for Windows and for the web |
-| `wasmtime/` | git submodule with the wasmtime sources |
-
-[package:native_toolchain_cmake]: https://pub.dev/packages/native_toolchain_cmake
+| `lib/src/wasmtime_bindings_generated.dart` | the generated C bindings (do not edit) |
+| `hook/build.dart` | the build hook Flutter and Dart run |
+| `hook/src/wasmtime_sources.dart` | where the wasmtime sources come from |
+| `src/CMakeLists.txt` | selects the cargo features and builds the C API as a shared library |
+| `ffigen.yaml` | ffigen configuration |
+| `example/` | a Flutter app that builds for Windows and for the web |
+| `wasmtime/` | the git submodule, for development only |

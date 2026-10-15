@@ -6,7 +6,7 @@
 // Dart code runs in both places:
 //
 // ```dart
-// import 'package:flutter_wasm/flutter_wasm.dart';
+// import 'package:webassembly/webassembly.dart';
 //
 // final module = await WebAssembly.compile(wasmBytes);
 // final instance = await WebAssembly.instantiate(module, {
@@ -17,8 +17,8 @@
 //
 // wasmtime specific things - engines, stores, links, configuration, fuel, host
 // function trampolines, module serialisation, and running on other isolates -
-// are deliberately *not* here; see `package:flutter_wasm/wasmtime.dart` and
-// `package:flutter_wasm/parallel.dart`.
+// are deliberately *not* here; see `package:webassembly/wasmtime.dart` and
+// `package:webassembly/parallel.dart`.
 
 import 'dart:typed_data';
 

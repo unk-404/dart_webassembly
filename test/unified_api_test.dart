@@ -6,12 +6,12 @@
 //     dart test test/unified_api_test.dart          # wasmtime
 //     dart test -p chrome test/unified_api_test.dart # the browser
 //
-// which is the whole point of `package:flutter_wasm/flutter_wasm.dart`.
+// which is the whole point of `package:webassembly/webassembly.dart`.
 
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:flutter_wasm/flutter_wasm.dart';
+import 'package:webassembly/webassembly.dart';
 import 'package:test/test.dart';
 
 /// True when compiled for the web with dart2js, where `0` and `0.0` are the

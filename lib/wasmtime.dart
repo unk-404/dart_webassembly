@@ -1,6 +1,6 @@
 /// The full, wasmtime specific API.
 ///
-/// This is the layer below `package:flutter_wasm/flutter_wasm.dart`: engines,
+/// This is the layer below `package:webassembly/webassembly.dart`: engines,
 /// stores, linkers, host functions and the raw value model, without the
 /// JavaScript shaped facade.  Use it when you need something the WebAssembly
 /// API does not express - configuring fuel, shared memories, module

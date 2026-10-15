@@ -3,7 +3,7 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter_wasm/wasmtime.dart';
+import 'package:webassembly/wasmtime.dart';
 import 'package:test/test.dart';
 
 Uint8List fixture(String name) =>

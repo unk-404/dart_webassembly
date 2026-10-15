@@ -1,17 +1,25 @@
-# flutter_wasm_example
+# webassembly_example
 
-Demonstrates how to use the flutter_wasm package.
+Loads `assets/demo.wasm` - a two function module that imports `env.log` - and
+runs it through `package:webassembly`:
 
-## Getting Started
+```dart
+final module = await WebAssembly.compile(bytes);
+final instance = await WebAssembly.instantiate(module, {
+  'env': {'log': (int value) => print(value)},
+});
+print((instance.exports['add'] as Function)(20, 22));
+```
 
-This project is a starting point for a Flutter application.
+The same `lib/main.dart` runs on both backends, because the package picks one at
+compile time: wasmtime on Windows (and the other native platforms), the
+browser's own `WebAssembly` on the web.
 
-A few resources to get you started if this is your first Flutter project:
+```sh
+flutter run -d windows      # or: flutter build windows
+flutter run -d chrome       # or: flutter build web
+```
 
-- [Learn Flutter](https://docs.flutter.dev/get-started/learn-flutter)
-- [Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Flutter learning resources](https://docs.flutter.dev/reference/learning-resources)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+The screen says which backend it is running on. On Windows the build compiles
+wasmtime from source and puts `wasmtime.dll` next to the executable; a web build
+downloads and compiles nothing, because the browser brings its own WebAssembly.

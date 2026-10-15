@@ -1,0 +1,15 @@
+# Files that must not end up in the published package.
+#
+# `.gitignore` already keeps `.agent/` and `build/` out; they are repeated here
+# because this file is the authoritative list once it exists.
+.agent/
+build/
+example/build/
+example/.dart_tool/
+.dart_tool/
+.vsocde/
+*.log
+
+# The wasmtime sources are a 100 MB checkout that the build hook downloads at a
+# pinned revision into a user level cache; see hook/src/wasmtime_sources.dart.
+wasmtime/

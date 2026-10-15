@@ -41,7 +41,7 @@ structs:
       '^__private3$': 'privateData3'
 ffi-native:
   # Must match the code asset registered by hook/build.dart.
-  asset-id: 'package:flutter_wasm/wasmtime.dart'
+  asset-id: 'package:webassembly/wasmtime.dart'
 comments:
   style: any
   length: full
