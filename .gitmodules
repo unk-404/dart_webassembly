@@ -1,3 +1,6 @@
 [submodule "wasmtime"]
 	path = wasmtime
 	url = https://github.com/bytecodealliance/wasmtime
+	# The build only needs one commit; without this a CI checkout downloads the
+	# whole history (about ten times as much).
+	shallow = true

@@ -109,6 +109,28 @@ Notes:
   target directory but derives the path it installs from from
   `$CARGO_TARGET_DIR`, which do not always agree.
 
+### Published path
+
+A published copy has no `wasmtime/` directory, so the build hook downloads the
+pinned revision and compiles that. Both halves can be checked locally:
+
+```sh
+# The download itself (~100 MB, about 15 s). CI runs this on every push.
+WASMTIME_DOWNLOAD_TEST=1 dart test test/wasmtime_sources_test.dart
+```
+
+```sh
+# A full build from a downloaded checkout rather than the submodule: point the
+# user define above at one, drop the hook cache so the hook runs again, and
+# build. This is also what the Windows job in CI does not cover, which is why
+# the slower parts are worth running by hand before a release.
+rm -rf example/.dart_tool/hooks_runner
+cd example && flutter build windows
+```
+
+On Windows, `$env:WASMTIME_DOWNLOAD_TEST = '1'` and `Remove-Item
+example\.dart_tool\hooks_runner -Recurse -Force`.
+
 ## Using wasmtime directly
 
 ```dart

@@ -56,9 +56,12 @@ endif()
 # selects (`rustc` then reports "no default is configured").
 set(WEBASSEMBLY_RUSTUP_HOME "$ENV{RUSTUP_HOME}")
 if(WEBASSEMBLY_RUSTUP_HOME STREQUAL "")
+  # `*` does not match dot files, so the usual `~/.rustup` has to be named -
+  # which is where CI runners and most Linux and macOS machines keep it.
   file(GLOB _rustup_candidates
        LIST_DIRECTORIES true
        "${_cargo_home}" "${_cargo_home}/.." "${_cargo_home}/../*"
+       "${_cargo_home}/../.rustup" "${_cargo_home}/../.cargo"
        "$ENV{USERPROFILE}/.rustup" "$ENV{HOME}/.rustup")
   foreach(_candidate IN LISTS _rustup_candidates)
     file(GLOB _installed_toolchains LIST_DIRECTORIES true "${_candidate}/toolchains/*")
